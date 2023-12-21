@@ -1,0 +1,15 @@
+{
+  "name": "backend-learning",
+  "version": "1.0.0",
+  "description": "Project based learning of backend development from the course offered by Hitesh Chaudhary on Chai aur Code Youtube channel.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "mali",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "prettier": "^3.1.1"
+  }
+}
