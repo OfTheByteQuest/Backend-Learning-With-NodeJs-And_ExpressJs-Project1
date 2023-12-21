@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "Project based learning of backend development from the course offered by Hitesh Chaudhary on Chai aur Code Youtube channel.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/index.js"
   },
   "author": "mali",
   "license": "ISC",
