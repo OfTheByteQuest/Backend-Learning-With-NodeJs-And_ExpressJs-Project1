@@ -4,12 +4,12 @@ import { DB_NAME } from "../constants.js";
 
 export default async function connectToDb() {
   try {
-    const connectionObject = await mongoose.connect(
+    const connectionInstance = await mongoose.connect(
       `${process.env.MONGODB_URI}/${DB_NAME}`
     );
 
     console.log(
-      `dbSuccess: Connected to database -MONGODB- successfully through connectToDb FUNCTION at port ${connectionObject.connection.host}`
+      `dbSuccess: Connected to database -MONGODB- successfully through connectToDb FUNCTION at port ${connectionInstance.connection.host}`
     );
   } catch (error) {
     console.error(
