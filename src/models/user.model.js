@@ -4,15 +4,15 @@ import bcrypt from "bcrypt";
 
 const userSchema = new Schema(
   {
-    username: {
+    userName: {
       type: String,
       required: true,
-      unique: [true, "Username should be unique, this one is already taken"],
+      unique: [true, "userName should be unique, this one is already taken"],
       trim: true,
       lowercase: true,
       index: true,
     },
-    fullname: {
+    fullName: {
       type: String,
       required: true,
       trim: true,
@@ -26,7 +26,7 @@ const userSchema = new Schema(
     },
     password: {
       type: String, // password will be encrypted
-      required: [, "Password is required"],
+      required: [true, "Password is required"],
     },
     watchHistory: {
       type: Schema.Types.ObjectId,
@@ -36,7 +36,7 @@ const userSchema = new Schema(
       type: String, // url from cloudinary
     },
     avatar: {
-      tyre: String, // url from cloudinary
+      type: String, // url from cloudinary
       required: true,
     },
     refreshToken: String,
@@ -53,7 +53,7 @@ userSchema.methods.generateAcessToken = function () {
     {
       _id: this._id,
       email: this.email,
-      username: this.username,
+      userName: this.userName,
       fullName: this.fullName,
     },
     process.env.ACCESS_TOKEN_SECRET,

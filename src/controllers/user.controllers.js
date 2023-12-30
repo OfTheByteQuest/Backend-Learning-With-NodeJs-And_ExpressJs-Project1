@@ -1,10 +1,10 @@
 import asyncHandler from "../utils/asyncHandler.js";
-import ApiError from "../utils/ApiError.js";
-import ApiResponse from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 
 import { validateEmail } from "../utils/validation/formatValidator.js";
 
-import User from "../models/user.model.js";
+import { User } from "../models/user.model.js";
 import uploadOnCloudinary from "../services/cloudinary.js";
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -17,50 +17,45 @@ const registerUser = asyncHandler(async (req, res) => {
   //remove password and refresh token field from response
   //return res
 
-  const { username, fullname, email, password } = req.body;
+  const { userName, fullName, email, password } = req.body;
 
-  console.log("req: ", { req });
+  console.log(userName, fullName, email, password);
+
+  console.log("req.body: ", req.body);
 
   //cheking that fields are provided
 
   if (
-    [username, fullname, email, password].some((field) => {
-      field?.trim == "";
+    [userName, fullName, email, password].some((field) => {
+      field?.trim() === "";
     })
   ) {
     throw new ApiError(
-      (statusCode = 400),
-      (message = "fieldsEmptyError: All the fields are required in the form")
+      400,
+      "fieldsEmptyError: All the fields are required in the form"
     );
   }
 
   //checking the format of the email
 
-  if (!validateEmail(email)) {
-    throw new ApiError(
-      (statusCode = 400),
-      (message = "inputFormatError: Invalid email address")
-    );
-  }
+  // if (!validateEmail(email)) {
+  //   throw new ApiError(400, "inputFormatError: Invalid email address");
+  // }
 
   //checking if the user already exists
 
   const existedUser = await User.findOne({
-    $or: [{ email }, { username }],
+    $or: [{ email }, { userName }],
   });
 
   if (existedUser) {
-    throw new ApiError(
-      (statusCode = 409),
-      (message = "UserAlreadyExistsError: User already exists")
-    );
+    throw new ApiError(409, "UserAlreadyExistsError: User already exists");
   }
 
   const avatarLocalPath = req.files?.avatar[0]?.path;
 
   console.log("req.files.avatar: ", req.files.avatar);
-
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  console.log("avatarLocalPath: ", avatarLocalPath);
 
   if (!avatarLocalPath) {
     throw new ApiError(
@@ -68,6 +63,11 @@ const registerUser = asyncHandler(async (req, res) => {
       "fieldsEmptyError: Avatar field is required to filled"
     );
   }
+
+  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+  console.log("req.files.coverImage: ", req.files.coverImage);
+  console.log("coverImageLocalPath: ", coverImageLocalPath);
 
   if (!coverImageLocalPath) {
     throw new ApiError(
@@ -78,15 +78,14 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
-  console.log("avatar: ", avatar);
-
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
+  console.log("avatar: ", avatar);
   console.log("coverImage: ", coverImage);
 
-  const user = User.create({
-    username: username.lowercase,
-    fullname,
+  const user = await User.create({
+    userName: userName.toLowerCase(),
+    fullName,
     email,
     password,
     coverImage: coverImage?.url || "",
@@ -95,7 +94,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   console.log("user: ", user);
 
-  const createdUser = await User.fiendById(user._id).select(
+  const createdUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
 
