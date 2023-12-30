@@ -10,7 +10,7 @@ connectToDb()
       console.log(
         "lsSuccess: Successfully listening on port " +
           process.env.PORT +
-          "through FILE index.js"
+          " through FILE index.js"
       );
     });
   })
