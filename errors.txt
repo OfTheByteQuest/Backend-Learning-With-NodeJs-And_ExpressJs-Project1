@@ -1,0 +1,8 @@
+"fieldsEmptyError: All the fields are required in the form"
+"UserAlreadyExistsError: User already exists"
+"fieldsEmptyError: Avatar field is required to filled"
+"fieldsEmptyError: CoverImage field is required to filled"
+"registerError: Something went wrong file registering the user"
+"tokenGenerationError: Something went wrong during token generation"
+"UserDoesNotExistError: User is not registered"
+"passwordMissmatchError: Entered password is incorrect"
