@@ -5,7 +5,7 @@ import {
   logoutUser,
 } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
-import { verifyToken } from "../middlewares/auth.middleare.js";
+import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 

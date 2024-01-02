@@ -39,7 +39,10 @@ const userSchema = new Schema(
       type: String, // url from cloudinary
       required: true,
     },
-    refreshToken: String,
+    refreshToken: {
+      type: String,
+      default: undefined,
+    },
   },
   { timestamps: true }
 );

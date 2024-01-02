@@ -169,7 +169,7 @@ const loginUser = asyncHandler(async (req, res) => {
     );
   }
 
-  const { accessToken, refreshToken } = generateAccessAndRefreshTokens(user);
+  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user);
 
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
@@ -202,23 +202,24 @@ const logoutUser = asyncHandler(async (req, res) => {
 
   const user = req.user;
 
-  await User.findByIdAndUpdate(
-    user._id,
-    {
-      $set: { refreshToken: undefined },
-    },
-    { new: true }
-  );
+  user.refreshToken = refreshToken;
+
+  await user.save({ validateBeforeSave: false });
+
+  // user.refreshToken = undefined;
+
+  // await user.save({ validateBeforeSave: false });
 
   const options = {
     httpOnly: true,
     secure: true,
+    expires: new Date(0)
   };
 
   res
     .status(200)
-    .cookie("accesToken", options)
-    .cookie("refreshToken", options)
+    .cookie("accessToken", "",options)
+    .cookie("refreshToken", "",options)
     .json(
       new ApiResponse(
         200,
@@ -227,5 +228,7 @@ const logoutUser = asyncHandler(async (req, res) => {
       )
     );
 });
+
+//TODO: check this route
 
 export { registerUser, loginUser, logoutUser };

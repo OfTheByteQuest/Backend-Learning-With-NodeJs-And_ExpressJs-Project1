@@ -8,6 +8,7 @@ export const verifyToken = asyncHandler(async (req, _, next) => {
     const token =
       req.cookies?.accessToken ||
       req.header("Authorization")?.replace("Bearer ", "");
+    console.log(req.cookies);
 
     if (!token) {
       throw new ApiError(
@@ -18,9 +19,9 @@ export const verifyToken = asyncHandler(async (req, _, next) => {
 
     const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    const { _id } = decodedToken;
-
-    const user = await User.findById(_id).select("-password -refreshtoken");
+    const user = await User.findById(decodedToken._id).select(
+      "-password -refreshtoken"
+    );
 
     if (!user) {
       throw new ApiError(401, "invalidAccessRequestError: User is not found");
