@@ -6,3 +6,6 @@
 "tokenGenerationError: Something went wrong during token generation"
 "UserDoesNotExistError: User is not registered"
 "passwordMissmatchError: Entered password is incorrect"
+"unauthorizedAccessRequestError: Token is not present"
+"InvalidRefreshTokenError: Invalid refresh token"
+"RefreshTokenExpirationError: Refresh token has expired please bother to login again"

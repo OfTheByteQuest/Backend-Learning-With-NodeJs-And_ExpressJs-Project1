@@ -2,10 +2,15 @@ import asyncHandler from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+import { options } from "../constants.js";
+
 // import { validateEmail } from "../utils/validation/formatValidator.js";
 
 import { User } from "../models/user.model.js";
 import uploadOnCloudinary from "../services/cloudinary.js";
+
+import jwt from "jsonwebtoken";
+import { response } from "express";
 
 const generateAccessAndRefreshTokens = async (user) => {
   //Instead of taking user._id we are taking user object
@@ -169,16 +174,12 @@ const loginUser = asyncHandler(async (req, res) => {
     );
   }
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user);
+  const { accessToken, refreshToken } =
+    await generateAccessAndRefreshTokens(user);
 
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
-
-  const options = {
-    secure: true,
-    httpOnly: true,
-  };
 
   return res
     .status(200)
@@ -213,13 +214,13 @@ const logoutUser = asyncHandler(async (req, res) => {
   const options = {
     httpOnly: true,
     secure: true,
-    expires: new Date(0)
+    expires: new Date(0),
   };
 
   res
     .status(200)
-    .cookie("accessToken", "",options)
-    .cookie("refreshToken", "",options)
+    .cookie("accessToken", "", options)
+    .cookie("refreshToken", "", options)
     .json(
       new ApiResponse(
         200,
@@ -229,6 +230,262 @@ const logoutUser = asyncHandler(async (req, res) => {
     );
 });
 
-//TODO: check this route
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  //Take out the refresh token
+  //Verify the token
+  //Validate the token against the one from the db's refresh token
+  //Generate new tokens by the generateRefreshAndAccessToken funtion
+  //Return the tokens through cookies
 
-export { registerUser, loginUser, logoutUser };
+  const incomingRefreshToken =
+    req.cookies?.refreshToken || req.body.refreshToken;
+
+  console.log(incomingRefreshToken);
+
+  if (!incomingRefreshToken) {
+    throw new ApiError(
+      401,
+      "unauthorizedAccessRequestError: Token is not present"
+    );
+  }
+
+  const verifiedRefreshToken = jwt.verify(
+    incomingRefreshToken,
+    process.env.REFRESH_TOKEN_SECRET
+  );
+
+  console.log(verifiedRefreshToken);
+
+  const user = await User.findById(verifiedRefreshToken?._id).select(
+    "-password"
+  );
+
+  console.log(user._id);
+
+  if (!user) {
+    throw new ApiError(401, "InvalidRefreshTokenError: Invalid refresh token");
+  }
+
+  if (incomingRefreshToken !== user.refreshToken) {
+    throw new ApiError(
+      401,
+      "RefreshTokenExpirationError: Refresh token has expired please bother to login again"
+    );
+  }
+
+  const { newRefreshToken, accessToken } = generateAccessAndRefreshTokens(user);
+
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", newRefreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        { refreshToken: newRefreshToken, accessToken },
+        "accessTokenRefreshed: Access token has been refreshed"
+      )
+    );
+});
+
+const updatePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword, confirmPassword } = req.body; //Confirm Password is normmaly validated on the frontend side
+
+  if (!(oldPassword && newPassword && confirmPassword)) {
+    throw new ApiError(
+      400,
+      "fieldsEmptyError: Pssword fielda are required to filled"
+    );
+  }
+
+  if (!(confirmPassword === newPassword)) {
+    throw new ApiError(
+      400,
+      "unauthorizedAccessRequest: Confrim password and the new password does not match"
+    );
+  }
+
+  const user = await User.findById(req.user._id); //Here the requirement of fetching the user again is required as the "auth" middleware does not neglects the fecthing of password and that's what's needed here
+
+  if (!user) {
+    throw new ApiError(
+      400,
+      "unauthorizedAccessRequestError: Token is not present something went wrong with the 'auth' middleware"
+    );
+  }
+
+  if (!user.isPasswrodCorrect(user.password)) {
+    throw new ApiError(
+      400,
+      "unauthorizedAccessRequest: Povided password is incorrect"
+    );
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password has been updated successfully"));
+});
+
+const getCurrentUser = asyncHandler((req, res) => {
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        req.user,
+        "Current user has been fetched and delivered succesfully"
+      )
+    );
+});
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+  const { fullName, email } = req.body;
+
+  if (!(fullName && email)) {
+    throw new ApiError(
+      400,
+      "fieldsEmptyError: fullName and email fields are required in the form"
+    );
+  }
+
+  console.log("fullName:", fullName, "/nemail:", email);
+
+  if (!(fullName && email)) {
+    throw new ApiError(
+      400,
+      "fieldsEmptyError: fullName and email fields are required in the form"
+    );
+  }
+
+  const user = req.user;
+
+  if (!user) {
+    throw new ApiError(
+      400,
+      "unauthorizedAccessRequestError: Token is not present something went wrong with the 'auth' middleware"
+    );
+  }
+
+  user.fullName = fullName;
+  user.email = email;
+
+  await user.save({ validateBeforeSave: true });
+
+  const userWithUpdatedCredentials = await User.findById(user.id);
+
+  console.log(
+    "updatedEmail: ",
+    userWithUpdatedCredentials.email,
+    "/nfullName: ",
+    userWithUpdatedCredentials.fullName
+  );
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userWithUpdatedCredentials,
+        "Account details have been updated successfully"
+      )
+    );
+});
+
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarFilePath = req.file?.path;
+
+  if (!avatarFilePath) {
+    throw new ApiError(
+      401,
+      "fieldsEmptyError: AvatarImage field is required to filled"
+    );
+  }
+
+  const user = req.user;
+
+  if (!user) {
+    throw new ApiError(
+      401,
+      "unauthorizedAccessRequestError: Token is not present something went wrong with the 'auth' middleware"
+    );
+  }
+
+  const file = await uploadOnCloudinary(avatarFilePath);
+
+  const userWithUpdatedCredentials = await User.findByIdAndUpdate(
+    user?.id,
+    {
+      $set: {
+        avatar: file.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userWithUpdatedCredentials,
+        "Avatar Image has been updated successfully"
+      )
+    );
+});
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  const coverImageFilePath = req.file?.path;
+
+  if (!coverImageFilePath) {
+    throw new ApiError(
+      401,
+      "fieldsEmptyError: CoverImage field is required to filled"
+    );
+  }
+
+  const user = req.user;
+
+  if (!user) {
+    throw new ApiError(
+      401,
+      "unauthorizedAccessRequestError: Token is not present something went wrong with the 'auth' middleware"
+    );
+  }
+
+  const file = await uploadOnCloudinary(coverImageFilePath);
+
+  const userWithUpdatedCredentials = await User.findByIdAndUpdate(
+    user?.id,
+    {
+      $set: {
+        coverImage: file.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        userWithUpdatedCredentials,
+        "Avatar Image has been updated successfully"
+      )
+    );
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  updatePassword,
+  getCurrentUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
+};
