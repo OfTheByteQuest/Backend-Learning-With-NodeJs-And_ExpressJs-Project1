@@ -374,7 +374,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 
   await user.save({ validateBeforeSave: true });
 
-  const userWithUpdatedCredentials = await User.findById(user.id);
+  const userWithUpdatedCredentials = await User.findById(user._id);
 
   console.log(
     "updatedEmail: ",
@@ -416,7 +416,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   const file = await uploadOnCloudinary(avatarFilePath);
 
   const userWithUpdatedCredentials = await User.findByIdAndUpdate(
-    user?.id,
+    user?._id,
     {
       $set: {
         avatar: file.url,
@@ -458,7 +458,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   const file = await uploadOnCloudinary(coverImageFilePath);
 
   const userWithUpdatedCredentials = await User.findByIdAndUpdate(
-    user?.id,
+    user?._id,
     {
       $set: {
         coverImage: file.url,
