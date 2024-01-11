@@ -478,6 +478,86 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     );
 });
 
+const getUserChannelDetails = asyncHandler(async (req, res) => {
+  const { userName } = req.params;
+
+  if (!userName) {
+    throw new ApiError(
+      404,
+      "fieldsEmptyError: userName field is required to filled"
+    );
+  }
+
+  const channel = await User.aggregate([
+    {
+      $match: {
+        userName: userName?.toLowerCase(),
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        foreignField: "channel",
+        localField: "_id",
+        as: "subscribedBy",
+      },
+    },
+    {
+      $lookup: {
+        from: "subscriptions",
+        foreignField: "subscriber",
+        localField: "_id",
+        as: "subscribedTo",
+      },
+    },
+    {
+      $addFields: {
+        subscribedToCount: {
+          $size: "$subscribedTo",
+        },
+        subscribedByCount: {
+          $size: "$subscribedBy",
+        },
+        isSubscribedTo: {
+          $cond: {
+            $if: { $in: [req.user?._id, "$subscribedBy"] },
+            $then: true,
+            $else: false,
+          },
+        },
+      },
+    },
+    {
+      $project: {
+        subscribedToCount: 1,
+        subscribedByCount: 1,
+        userName: 1,
+        fullName: 1,
+        avatar: 1,
+        coverImage: 1,
+        email: 1,
+        isSubscribed: 1,
+      },
+    },
+  ]);
+
+  if (!channel?.lenght) {
+    throw new ApiError(404, "chnannelNotFoundError: Channel does not exists");
+  }
+
+  console.log(channel);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        channel[0],
+        "User Channel has been fethced succesfully"
+      )
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -488,4 +568,5 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelDetails,
 };
