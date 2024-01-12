@@ -7,6 +7,8 @@ import {
   updatePassword,
   getCurrentUser,
   updateAccountDetails,
+  getUserChannelDetails,
+  getUserWatchHistory,
 } from "../controllers/user.controllers.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyToken } from "../middlewares/auth.middleware.js";
@@ -36,12 +38,17 @@ router.route("/refreshAccessToken").post(refreshAccessToken);
 
 router.route("/updatePassword").post(verifyToken, updatePassword);
 router.route("/getCurrentUser").post(verifyToken, getCurrentUser);
-router.route("/updateAccountDetails").post(verifyToken, updateAccountDetails);
+router.route("/updateAccountDetails").patch(verifyToken, updateAccountDetails);
 router
   .route("/updateUserAvatar")
-  .post(verifyToken, upload.single("updateAvatar"), updateUserAvatar);
+  .patch(verifyToken, upload.single("updateAvatar"), updateUserAvatar);
 router
   .route("/updateUserCoverImage")
-  .post(verifyToken, upload.single("updateCoverImage"), updateUserCoverImage);
+  .patch(verifyToken, upload.single("updateCoverImage"), updateUserCoverImage);
+router
+  .route("/getUserChannelDetails/:userName")
+  .get(verifyToken, getUserChannelDetails);
+router.route("/getUserWatchHistory").post(verifyToken, getUserWatchHistory);
+
 
 export default router;

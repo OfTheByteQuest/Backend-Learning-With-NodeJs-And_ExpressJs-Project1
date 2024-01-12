@@ -520,7 +520,7 @@ const getUserChannelDetails = asyncHandler(async (req, res) => {
         },
         isSubscribedTo: {
           $cond: {
-            $if: { $in: [req.user?._id, "$subscribedBy"] },
+            $if: { $in: [req.user?._id, "$subscribedBy.subscriber"] },
             $then: true,
             $else: false,
           },
@@ -558,6 +558,64 @@ const getUserChannelDetails = asyncHandler(async (req, res) => {
     );
 });
 
+const getUserWatchHistory = asyncHandler(async (req, res) => {
+  const _id = req.user._id;
+
+  if (!_id) {
+    throw new ApiError(
+      404,
+      "unauthorizedAccessRequestError: _id is not present something went wrong with the 'auth' middleware"
+    );
+  }
+
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(_id),
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    fullName: 1,
+                    userName: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: { $first: "$owner" },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, user[0].watchHistory),
+      "User's watchHistory has been fetched successfully."
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -569,4 +627,5 @@ export {
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelDetails,
+  getUserWatchHistory,
 };

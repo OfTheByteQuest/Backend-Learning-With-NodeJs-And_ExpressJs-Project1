@@ -28,10 +28,12 @@ const userSchema = new Schema(
       type: String, // password will be encrypted
       required: [true, "Password is required"],
     },
-    watchHistory: {
-      type: Schema.Types.ObjectId,
-      ref: "Video",
-    },
+    watchHistory: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Video",
+      },
+    ],
     coverImage: {
       type: String, // url from cloudinary
     },
