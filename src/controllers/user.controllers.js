@@ -581,6 +581,7 @@ const getUserWatchHistory = asyncHandler(async (req, res) => {
         foreignField: "_id",
         as: "watchHistory",
         pipeline: [
+          //TODO: HERE CHECK HOW DOES THE SUB-AGGREGATION HANDLES AN ARRAY OF OBJECTS WHICH WATCH-HISTORY IS
           {
             $lookup: {
               from: "users",

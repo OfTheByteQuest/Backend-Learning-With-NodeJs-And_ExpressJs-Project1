@@ -26,4 +26,11 @@ import usersRouter from "./routes/user.routes.js";
 
 app.use("/api/v1/users", usersRouter);
 
+//setting up routes for "./comments"
+
+import commentsRouter from "./routes/comment.routes.js"
+
+app.use("/api/v1/comments", commentsRouter);
+
+
 export { app };
