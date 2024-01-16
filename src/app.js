@@ -23,14 +23,22 @@ app.use(cookieParser());
 //setting up routes for "./users"
 
 import usersRouter from "./routes/user.routes.js";
-
 app.use("/api/v1/users", usersRouter);
 
 //setting up routes for "./comments"
 
-import commentsRouter from "./routes/comment.routes.js"
-
+import commentsRouter from "./routes/comment.routes.js";
 app.use("/api/v1/comments", commentsRouter);
+
+//setting up routes for "./video"
+
+import videoRouter from "./routes/video.routes.js";
+app.use("/api/v1/videos", videoRouter);
+
+//setting up routes for "./healthcheck"
+
+import healthcheckRouter from "./routes/healthcheck.routes.js";
+app.use("/api/v1/healthcheck", healthcheckRouter);
 
 
 export { app };

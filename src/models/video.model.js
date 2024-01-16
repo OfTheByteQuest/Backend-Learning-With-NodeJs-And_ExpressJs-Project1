@@ -1,14 +1,29 @@
 import mongoose, { Schema } from "mongoose";
-import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
+import aggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const videoSchema = new Schema(
   {
     videoFile: {
-      type: String, // url from cloudinary
-      required: true,
+      // One way of defining filed as an object
+      //url: {
+      //   type: String,
+      //   required: true,
+      // },
+      // publicId: {
+      //   type: String,
+      //   required: true,
+      // },
+
+      type: {
+        url: String,
+        publicId: String,
+      },
     },
     thumbnail: {
-      type: String, // url from cloudinary
+      type: {
+        url: String,
+        publicId: String,
+      },
       required: true,
     },
     owner: {
@@ -33,12 +48,12 @@ const videoSchema = new Schema(
     },
     isPublished: {
       type: Boolean,
-      default: true,
+      default: false,
     },
   },
   { timestamps: true }
 );
 
-videoSchema.plugin(mongooseAggregatePaginate);
+videoSchema.plugin(aggregatePaginate);
 
 export const Video = mongoose.model("Video", videoSchema);

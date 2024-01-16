@@ -75,14 +75,11 @@ const getVideoComments = asyncHandler(async (req, res) => {
   if (!aggregateComments) {
     throw new ApiError(
       404,
-      "Somwthing went wrong with the database in the comment's controllers"
+      "Something went wrong with the database in the comment's controllers"
     );
   }
 
-  const comments = await Comment.mongooseAggregatePaginate(
-    aggregateComments,
-    options
-  );
+  const comments = await Comment.aggregatePaginate(aggregateComments, options);
 
   return res
     .status(200)

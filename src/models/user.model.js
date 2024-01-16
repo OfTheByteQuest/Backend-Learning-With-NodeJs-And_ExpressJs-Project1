@@ -27,6 +27,7 @@ const userSchema = new Schema(
     password: {
       type: String, // password will be encrypted
       required: [true, "Password is required"],
+      trim: true,
     },
     watchHistory: [
       {
@@ -35,11 +36,18 @@ const userSchema = new Schema(
       },
     ],
     coverImage: {
-      type: String, // url from cloudinary
+      type: {
+        url: String,
+        publicId: String,
+      }, // url from cloudinary
+      required: [true, "Cover image and public is required"],
     },
     avatar: {
-      type: String, // url from cloudinary
-      required: true,
+      type: {
+        url: String,
+        publicId: String,
+      }, // url from cloudinary
+      required: [true, "Avatar and public is required"],
     },
     refreshToken: {
       type: String,

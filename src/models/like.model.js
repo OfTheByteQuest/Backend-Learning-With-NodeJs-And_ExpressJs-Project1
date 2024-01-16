@@ -5,6 +5,7 @@ const likeSchema = new Schema(
     comment: {
       type: Schema.Types.ObjectId,
       ref: "Comment",
+      default: undefined,
     },
     video: {
       type: Schema.Types.ObjectId,
@@ -18,6 +19,7 @@ const likeSchema = new Schema(
     tweet: {
       types: Schema.Types.ObjectId,
       ref: "Tweet",
+      default: undefined,
     },
   },
   { timestamps: true }

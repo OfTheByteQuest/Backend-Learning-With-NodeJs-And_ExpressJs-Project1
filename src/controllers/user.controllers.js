@@ -7,7 +7,10 @@ import { options } from "../constants.js";
 // import { validateEmail } from "../utils/validation/formatValidator.js";
 
 import { User } from "../models/user.model.js";
-import uploadOnCloudinary from "../services/cloudinary.js";
+import {
+  uploadOnCloudinary,
+  deleteFromCloudinary,
+} from "../services/cloudinary.js";
 
 import jwt from "jsonwebtoken";
 import { response } from "express";
@@ -102,7 +105,6 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   const avatar = await uploadOnCloudinary(avatarLocalPath);
-
   const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
   // console.log("avatar: ", avatar);
@@ -113,8 +115,14 @@ const registerUser = asyncHandler(async (req, res) => {
     fullName,
     email,
     password,
-    coverImage: coverImage?.url || "",
-    avatar: avatar?.url || "",
+    coverImage: {
+      url: coverImage?.url || "",
+      publicId: coverImage?.public_id || "",
+    },
+    avatar: {
+      url: avatar?.url || "",
+      publicId: avatar?.public_id || "",
+    },
   });
 
   // console.log("user: ", user);
@@ -419,11 +427,26 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     user?._id,
     {
       $set: {
-        avatar: file.url,
+        avatar: {
+          url: file.url,
+          publicId: file.public_id,
+        },
       },
     },
     { new: true }
   ).select("-password");
+
+  if (file) {
+    const deletedFileResponse = await deleteFromCloudinary(
+      req.user.avatar.publicId
+    );
+    if (!(deletedFileResponse === "ok")) {
+      throw new ApiError(
+        400,
+        "Avatar file could not be deleted from cloudinary: Error at updateAccoutnDetails controller"
+      );
+    }
+  }
 
   return res
     .status(200)
@@ -461,11 +484,26 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     user?._id,
     {
       $set: {
-        coverImage: file.url,
+        coverImage: {
+          url: file.url,
+          publicId: file.public_id,
+        },
       },
     },
     { new: true }
   ).select("-password");
+
+  if (file) {
+    const deletedFileResponse = await deleteFromCloudinary(
+      req.user.avatar.publicId
+    );
+    if (!(deletedFileResponse === "ok")) {
+      throw new ApiError(
+        400,
+        "CoverImage file could not be deleted from cloudinary: Error at updateAccoutnDetails controller"
+      );
+    }
+  }
 
   return res
     .status(200)
