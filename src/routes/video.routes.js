@@ -13,6 +13,8 @@ import { verifyToken } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
+router.use(verifyToken);
+
 router
   .route("/")
   .get(getAllVideos)

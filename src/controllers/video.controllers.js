@@ -34,6 +34,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
   if (query) {
     pipelineArray.push({
       $search: {
+        index: "search-videos",
         text: {
           path: ["description", "title"],
           query: String(query),

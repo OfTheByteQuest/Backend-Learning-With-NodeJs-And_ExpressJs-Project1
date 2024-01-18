@@ -40,5 +40,16 @@ app.use("/api/v1/videos", videoRouter);
 import healthcheckRouter from "./routes/healthcheck.routes.js";
 app.use("/api/v1/healthcheck", healthcheckRouter);
 
+//setting up routes for "./dashboard"
+import dashboardRouter from "./routes/dashboard.routes.js"
+app.use("/api/v1/dashboard", dashboardRouter);
+
+//setting up routes for "./tweet"
+import tweetRouter from "./routes/tweet.routes.js"
+app.use("/api/v1/tweet", tweetRouter);
+
+//setting up routes for "./tweet"
+import likeRouter from "./routes/like.routes.js"
+app.use("/api/v1/like", likeRouter);
 
 export { app };
