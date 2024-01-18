@@ -24,7 +24,7 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     video: videoId,
   });
 
-  if (!tweet) {
+  if (!like) {
     const addedLike = await Like.create({
       video: videoId,
       likedBy: ownerId,
