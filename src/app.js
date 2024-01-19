@@ -52,4 +52,8 @@ app.use("/api/v1/tweet", tweetRouter);
 import likeRouter from "./routes/like.routes.js"
 app.use("/api/v1/like", likeRouter);
 
+//setting up routes for "./tweet"
+import playlistRouter from "./routes/playlist.routes.js"
+app.use("/api/v1/like", playlistRouter);
+
 export { app };
