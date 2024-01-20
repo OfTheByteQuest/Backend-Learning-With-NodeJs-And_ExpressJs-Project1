@@ -48,12 +48,12 @@ app.use("/api/v1/dashboard", dashboardRouter);
 import tweetRouter from "./routes/tweet.routes.js"
 app.use("/api/v1/tweet", tweetRouter);
 
-//setting up routes for "./tweet"
+//setting up routes for "./like"
 import likeRouter from "./routes/like.routes.js"
 app.use("/api/v1/like", likeRouter);
 
-//setting up routes for "./tweet"
+//setting up routes for "./playlist"
 import playlistRouter from "./routes/playlist.routes.js"
-app.use("/api/v1/like", playlistRouter);
+app.use("/api/v1/playlists", playlistRouter);
 
 export { app };

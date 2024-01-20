@@ -3,7 +3,7 @@ import { Tweet } from "../models/tweet.model.js";
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 import { response } from "express";
 
 const createTweet = asyncHandler(async (req, res) => {
@@ -50,7 +50,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
   const userTweets = await Tweet.aggregate([
     {
       $match: {
-        owner: new mongoose.Types.ObjectId(userId),
+        owner: new mongoose.Types.ObjectId(ownerId),
       },
     },
     {

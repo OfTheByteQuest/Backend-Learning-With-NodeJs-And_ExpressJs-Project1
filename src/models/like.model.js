@@ -12,12 +12,12 @@ const likeSchema = new Schema(
       ref: "Video",
     },
     likedBy: {
-      types: Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
     tweet: {
-      types: Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Tweet",
       default: undefined,
     },

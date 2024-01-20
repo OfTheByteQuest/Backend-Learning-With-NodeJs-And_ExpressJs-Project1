@@ -5,7 +5,7 @@ import { Like } from "../models/like.model.js";
 import { Comment } from "../models/comment.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 import {
   uploadOnCloudinary,
   deleteFromCloudinary,
@@ -14,6 +14,8 @@ import { response } from "express";
 
 const getAllVideos = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+
+  console.log("query: ", req.query);
 
   //have already got the all the query params
   //create an array
@@ -51,7 +53,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
   if (userId && isValidObjectId(userId)) {
     pipelineArray.push({
       $match: {
-        owner: mongoose.Types.ObjectId(userId),
+        owner: new mongoose.Types.ObjectId(userId),
       },
     });
   }
@@ -72,10 +74,15 @@ const getAllVideos = asyncHandler(async (req, res) => {
     );
   }
 
+  console.log(pipelineArray);
+
   const videosAggregate = await Video.aggregate(pipelineArray);
 
-  if (!videosAggregate.length) {
+  console.log(videosAggregate);
+
+  if (videosAggregate.length === 0) {
     throw new ApiError(
+      404,
       "No videos were found in the pipeline or have been fethed from the database: Error at getAllVideos controller"
     );
   }
@@ -100,7 +107,11 @@ const getAllVideos = asyncHandler(async (req, res) => {
 
 const publishAVideo = asyncHandler(async (req, res) => {
   const { title, description } = req.body;
-  const { ownerId } = req?.user?._id;
+  const ownerId = req?.user?._id;
+
+  console.log("title: " + title);
+  console.log("description: " + description);
+  console.log("ownerId: " + ownerId);
 
   if (!(title && description && ownerId)) {
     throw new ApiError(
@@ -189,6 +200,9 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
+  const ownerId = req?.user?._id;
+
+  // console.log("VideoId:", videoId);
 
   if (!isValidObjectId(videoId)) {
     throw new ApiError(
@@ -197,6 +211,7 @@ const getVideoById = asyncHandler(async (req, res) => {
     );
   }
 
+  // console.log(isValidObjectId(videoId));
   // const video = await Video.findById(videoId).populate(
   //   "owner",
   //   "-_id -avatar -coverImage -password -refreshToken -createdAt -updatedAt"
@@ -204,10 +219,10 @@ const getVideoById = asyncHandler(async (req, res) => {
   //Other ways of popluating this doc.populate({path: "owner", select: {_id: 0, ...and so on}})
   //Not efficient way of populating insated aggregation pipelines are more efficient as they make a single query unlike mongoose's methods
 
-  const video = Video.aggregate([
+  const video = await Video.aggregate([
     {
       $match: {
-        _id: mongoose.Types.ObjectId(videoId),
+        _id: new mongoose.Types.ObjectId(videoId),
       },
     },
     {
@@ -216,14 +231,14 @@ const getVideoById = asyncHandler(async (req, res) => {
         localField: "owner",
         foreignField: "_id",
         as: "owner",
-        pipepline: [
+        pipeline: [
           {
             $lookup: {
               from: "subscriptions",
               localField: "_id",
               foreignField: "channel",
               as: "subscribers",
-              pipleline: [
+              pipeline: [
                 {
                   $project: {
                     subscribers: 1,
@@ -237,10 +252,15 @@ const getVideoById = asyncHandler(async (req, res) => {
               subscribersCount: { $size: "$subscribers" },
               isSubscribed: {
                 $cond: {
-                  $if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+                  if: {
+                    $in: [
+                      new mongoose.Types.ObjectId(ownerId),
+                      "$subscribers.subscriber",
+                    ],
+                  },
+                  then: true,
+                  else: false,
                 },
-                $then: true,
-                $else: false,
               },
             },
           },
@@ -267,7 +287,12 @@ const getVideoById = asyncHandler(async (req, res) => {
               $expr: {
                 $and: [
                   { $eq: ["$video", "$$videoId"] },
-                  { comment: { $exists: false } },
+                  {
+                    $or: [
+                      { $eq: [{ $type: "$comment" }, "missing"] },
+                      { $eq: ["$comment", null] },
+                    ],
+                  },
                 ],
               },
             },
@@ -289,9 +314,9 @@ const getVideoById = asyncHandler(async (req, res) => {
         owner: { $first: "$owner" },
         isLiked: {
           $cond: {
-            $if: { $in: [req.user._is, "$likes.likedBy"] },
-            $then: true,
-            $else: false,
+            if: { $in: [req.user._is, "$likes.likedBy"] },
+            then: true,
+            else: false,
           },
         },
       },
@@ -312,14 +337,16 @@ const getVideoById = asyncHandler(async (req, res) => {
     },
   ]);
 
-  if (!video) {
+  // console.log("video: ", video[0]);
+
+  if (!video[0]) {
     throw new ApiError(
       404,
       "fileFetchingError: Something went wrong while fetching vedio from the databse: Error at getVideoById controller"
     );
   }
 
-  Video.findByIdAndUpdate(
+  await Video.findByIdAndUpdate(
     video?._id,
     {
       $inc: {
@@ -329,7 +356,7 @@ const getVideoById = asyncHandler(async (req, res) => {
     { new: true }
   );
 
-  await User.findByIdAndUpdate(req.user?.id, {
+  await User.findByIdAndUpdate(req.user?._id, {
     $addToSet: {
       watchHistory: videoId,
     },
@@ -341,7 +368,7 @@ const getVideoById = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         video[0],
-        `Video with the id: ${video.id} has been fetched successfully`
+        `Video with the id: ${video[0]._id} has been fetched successfully`
       )
     );
 });
@@ -365,16 +392,8 @@ const updateVideo = asyncHandler(async (req, res) => {
   // const videoFileLocalPath = req.files?.videoFile[0].path; //not allowed as that would be equal to uploading a new video file
 
   const { title, description } = req.body;
+
   const thumbnailLocalPath = req.files?.thumbnail[0].path;
-
-  const oldVideo = await Video.findById(videoId);
-
-  if (!(oldVideo?.owner === req.user._id)) {
-    throw new ApiError(
-      400,
-      "unauthorizedRequest: Only the owner of the video is allowed to update it: Error at updateVideo controller"
-    );
-  }
 
   if (thumbnailLocalPath) {
     const uploadedThumbnail = await uploadOnCloudinary(thumbnailLocalPath);
@@ -401,6 +420,18 @@ const updateVideo = asyncHandler(async (req, res) => {
     }
   }
 
+  const oldVideo = await Video.findById(videoId);
+
+  console.log(oldVideo);
+  console.log(req.user._id);
+
+  if (!oldVideo?.owner.equals(req.user._id)) {
+    throw new ApiError(
+      400,
+      "unauthorizedRequest: Only the owner of the video is allowed to update it: Error at updateVideo controller"
+    );
+  }
+
   const setObject = { $set: {} };
 
   if (title) {
@@ -424,7 +455,7 @@ const updateVideo = asyncHandler(async (req, res) => {
         `Video with the id: ${videoId} has been updated with ${
           title ? `${title}, ` : ""
         }${description ? `description and ` : ""}${
-          thumbnail ? `thumbnail` : ""
+          thumbnailLocalPath ? `thumbnail` : ""
         }`
       )
     );
@@ -445,28 +476,37 @@ const deleteVideo = asyncHandler(async (req, res) => {
     );
   }
 
-  if (!(oldVideo?.owner === req.user._id)) {
-    throw new ApiError(
-      400,
-      "unauthorizedRequest: Only the owner of the video is allowed to update it: Error at updateVideo controller"
-    );
-  }
+  const oldVideo = await Video.findById(videoId);
 
-  const video = await Video.findById(videoId);
+  // console.log(oldVideo);
 
-  if (!video) {
+  if (!oldVideo) {
     throw new ApiError(
       404,
       "Video cannot be fetched from the database: Error at deleteVideo controller"
     );
   }
 
+  if (!oldVideo?.owner.equals(req.user._id)) {
+    throw new ApiError(
+      400,
+      "unauthorizedRequest: Only the owner of the video is allowed to update it: Error at updateVideo controller"
+    );
+  }
+
+  // console.log(oldVideo?.videoFile?.publicId);
+  // console.log(oldVideo?.thumbnail?.publicId);
+
   const deletedVideoResponse = await deleteFromCloudinary(
-    video?.videoFile?.url
+    oldVideo?.videoFile?.publicId,
+    "video"
   );
   const deletedThumbnailResponse = await deleteFromCloudinary(
-    video?.thumbnail?.url
+    oldVideo?.thumbnail?.publicId
   );
+
+  // console.log(deletedVideoResponse);
+  // console.log(deletedThumbnailResponse);
 
   if (!(deletedThumbnailResponse === "ok" && deletedVideoResponse === "ok")) {
     throw new ApiError(
@@ -478,7 +518,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
   const deletedVideo = await Video.findByIdAndDelete(videoId);
   const deletedComments = await Comment.deleteMany({ video: videoId });
   const deletedLikes = await Like.deleteMany({
-    $and: [{ video: videoId }, { $tweet: { $exists: false } }],
+    $and: [{ video: videoId }, { tweet: { $exists: false } }],
   });
 
   if (deleteVideo && deletedComments && deletedLikes) {
@@ -512,7 +552,12 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     );
   }
 
-  if (!(oldVideo?.owner === req.user._id)) {
+  const oldVideo = await Video.findById(videoId);
+
+  console.log(oldVideo);
+  console.log(req.user._id);
+
+  if (!oldVideo?.owner.equals(req.user._id)) {
     throw new ApiError(
       400,
       "unauthorizedRequest: Only the owner of the video is allowed to update it: Error at updateVideo controller"

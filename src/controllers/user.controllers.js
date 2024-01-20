@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import asyncHandler from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -19,12 +20,17 @@ const generateAccessAndRefreshTokens = async (user) => {
   //Instead of taking user._id we are taking user object
 
   try {
-    const accessToken = user.generateAcessToken();
-    const refreshToken = user.generateRefreshToken();
+    const accessToken = await user.generateAcessToken();
+    const refreshToken = await user.generateRefreshToken();
 
-    user.refreshToken = refreshToken;
+    console.log("accessToken: ", accessToken);
+    console.log("refreshToken: ", refreshToken);
 
-    await user.save({ validateBeforeSave: false });
+    await User.findByIdAndUpdate(user._id, {
+      $set: {
+        refreshToken: refreshToken,
+      },
+    });
 
     return { accessToken, refreshToken };
   } catch (error) {
@@ -173,10 +179,10 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error(400, "UserDoesNotExistError: User is not registered");
   }
 
-  const isPasswordValid = user.isPasswrodCorrect(password);
+  const isPasswordValid = await user.isPasswrodCorrect(password);
 
   if (!isPasswordValid) {
-    throw new Error(
+    throw new ApiError(
       401,
       "passwordMissmatchError: Entered password is incorrect"
     );
@@ -211,9 +217,13 @@ const logoutUser = asyncHandler(async (req, res) => {
 
   const user = req.user;
 
-  user.refreshToken = refreshToken;
-
-  await user.save({ validateBeforeSave: false });
+  await User.findByIdAndUpdate(
+    user._id,
+    {
+      $unset: { refreshToken: "" },
+    },
+    { new: true }
+  ).select("-password -avatar -coverImage");
 
   // user.refreshToken = undefined;
 
@@ -281,16 +291,19 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     );
   }
 
-  const { newRefreshToken, accessToken } = generateAccessAndRefreshTokens(user);
+  const { refreshToken, accessToken } =
+    await generateAccessAndRefreshTokens(user);
+
+  console.log(refreshToken);
 
   return res
     .status(200)
     .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", newRefreshToken, options)
+    .cookie("refreshToken", refreshToken, options)
     .json(
       new ApiResponse(
         200,
-        { refreshToken: newRefreshToken, accessToken },
+        { refreshToken: refreshToken, accessToken },
         "accessTokenRefreshed: Access token has been refreshed"
       )
     );
@@ -299,10 +312,15 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 const updatePassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword, confirmPassword } = req.body; //Confirm Password is normmaly validated on the frontend side
 
+  console.log(req.body);
+  // console.log("oldPassword: ", String(oldPassword));
+  // console.log("newPassword: ", newPassword);
+  // console.log("confirmPassword: ", confirmPassword);
+
   if (!(oldPassword && newPassword && confirmPassword)) {
     throw new ApiError(
       400,
-      "fieldsEmptyError: Pssword fielda are required to filled"
+      "fieldsEmptyError: Pssword fields are required to filled"
     );
   }
 
@@ -313,7 +331,7 @@ const updatePassword = asyncHandler(async (req, res) => {
     );
   }
 
-  const user = await User.findById(req.user._id); //Here the requirement of fetching the user again is required as the "auth" middleware does not neglects the fecthing of password and that's what's needed here
+  const user = await User.findById(req.user?._id); //Here the requirement of fetching the user again is required as the "auth" middleware does not neglects the fetching of password and that's what's needed here
 
   if (!user) {
     throw new ApiError(
@@ -322,7 +340,9 @@ const updatePassword = asyncHandler(async (req, res) => {
     );
   }
 
-  if (!user.isPasswrodCorrect(user.password)) {
+  const isPasswordCorrect = await user.isPasswrodCorrect(oldPassword);
+
+  if (!isPasswordCorrect) {
     throw new ApiError(
       400,
       "unauthorizedAccessRequest: Povided password is incorrect"
@@ -517,7 +537,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 });
 
 const getUserChannelDetails = asyncHandler(async (req, res) => {
-  const { userName } = req.params;
+  var { userName } = req.params;
 
   if (!userName) {
     throw new ApiError(
@@ -526,10 +546,13 @@ const getUserChannelDetails = asyncHandler(async (req, res) => {
     );
   }
 
+  const userId = req?.user?._id;
+  userName = userName?.toLowerCase();
+
   const channel = await User.aggregate([
     {
       $match: {
-        userName: userName?.toLowerCase(),
+        userName: userName,
       },
     },
     {
@@ -558,9 +581,14 @@ const getUserChannelDetails = asyncHandler(async (req, res) => {
         },
         isSubscribedTo: {
           $cond: {
-            $if: { $in: [req.user?._id, "$subscribedBy.subscriber"] },
-            $then: true,
-            $else: false,
+            if: {
+              $in: [
+                new mongoose.Types.ObjectId(userId),
+                "$subscribedBy.subscriber",
+              ],
+            },
+            then: true,
+            else: false,
           },
         },
       },
@@ -579,7 +607,7 @@ const getUserChannelDetails = asyncHandler(async (req, res) => {
     },
   ]);
 
-  if (!channel?.lenght) {
+  if (!channel[0].lenght === 0) {
     throw new ApiError(404, "chnannelNotFoundError: Channel does not exists");
   }
 

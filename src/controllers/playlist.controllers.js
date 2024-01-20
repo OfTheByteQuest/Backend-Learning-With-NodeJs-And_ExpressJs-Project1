@@ -2,7 +2,8 @@ import mongoose, { isValidObjectId } from "mongoose";
 import { Playlist } from "../models/playlist.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
+import { response } from "express";
 
 const createPlaylist = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
@@ -28,7 +29,7 @@ const createPlaylist = asyncHandler(async (req, res) => {
     description,
     videos,
     owner: ownerId,
-  }).exec();
+  });
 
   if (!createdPlaylist) {
     throw new ApiError(
@@ -36,6 +37,16 @@ const createPlaylist = asyncHandler(async (req, res) => {
       "Something went wrong while creating the playlist: Error at createPlaylist controller"
     );
   }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        createdPlaylist,
+        `Playlist with the _id: ${createdPlaylist._id} has been created successfully`
+      )
+    );
 });
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
@@ -81,13 +92,13 @@ const getPlaylistById = asyncHandler(async (req, res) => {
   const aggregateResponse = await Playlist.aggregate([
     {
       $match: {
-        _id: mongoose.Types.ObjectId(playlistId),
+        _id: new mongoose.Types.ObjectId(playlistId),
       },
     },
     {
       $lookup: {
         from: "videos",
-        localFiled: "videos",
+        localField: "videos",
         foreignField: "_id",
         as: "videos",
         pipeline: [
@@ -206,7 +217,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         updatedPlaylist,
-        "Video has been added to the playlist"
+        "Video has been removed from the playlist"
       )
     );
 });
@@ -263,21 +274,26 @@ const updatePlaylist = asyncHandler(async (req, res) => {
     );
   }
 
-  if (name && name.trim() === "") {
-    throw new ApiError(
-      400,
-      "InvalidName: Name must be a valid string: Error at updatePlaylist controller"
-    );
-  } else {
-    setObject.$set.name = name;
+  if (name) {
+    if (name.trim() !== "") {
+      setObject.$set.name = name;
+    } else {
+      throw new ApiError(
+        400,
+        "InvalidName: Name must be a valid string: Error at updatePlaylist controller"
+      );
+    }
   }
-  if (description && description.trim() === "") {
-    throw new ApiError(
-      400,
-      "InvalidDescription: Description must be a valid string: Error at updatePlaylist controller"
-    );
-  } else {
-    setObject.$set.description = description;
+
+  if (description) {
+    if (description.trim() !== "") {
+      setObject.$set.description = description;
+    } else {
+      throw new ApiError(
+        400,
+        "InvalidDescription: Description must be a valid string: Error at updatePlaylist controller"
+      );
+    }
   }
 
   const updatedPlaylist = await Playlist.updateOne(
@@ -308,9 +324,9 @@ const updatePlaylist = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         {},
-        `${name ? "Name and " : ""} ${
-          description ? "description" : ""
-        } with the id: ${playlistId} updated`
+        `${name ? "Name" : ""} ${name && description ? "and" : ""} ${
+          description ? "Description" : ""
+        } of the playlist with the id: ${playlistId} updated`
       )
     );
 });

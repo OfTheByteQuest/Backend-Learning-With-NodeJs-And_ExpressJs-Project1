@@ -29,4 +29,4 @@ const playListSchema = new Schema(
   { timestamps: true }
 );
 
-export const Tweet = new mongoose.model("Tweet", playListSchema);
+export const Playlist = new mongoose.model("Playlist", playListSchema);

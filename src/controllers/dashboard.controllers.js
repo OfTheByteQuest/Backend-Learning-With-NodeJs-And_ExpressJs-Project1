@@ -1,7 +1,7 @@
 import mongoose, { isValidObjectId } from "mongoose";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 import { User } from "../models/user.model.js";
 
 const getChannelStats = asyncHandler(async (req, res) => {
@@ -23,7 +23,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
   const aggregationResult = await User.aggregate([
     {
       $match: {
-        _id: mongoose.Types.ObjectId(channelId),
+        _id: new mongoose.Types.ObjectId(channelId),
       },
     },
     {
@@ -144,7 +144,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
   const aggregationResult = await User.aggregate([
     {
       $match: {
-        _id: mongoose.Types.ObjectId(channelId),
+        _id: new mongoose.Types.ObjectId(channelId),
       },
     },
     {

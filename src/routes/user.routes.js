@@ -7,6 +7,8 @@ import {
   updatePassword,
   getCurrentUser,
   updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
   getUserChannelDetails,
   getUserWatchHistory,
 } from "../controllers/user.controllers.js";
@@ -33,21 +35,22 @@ router.route("/login").post(upload.none(), loginUser);
 //Secured routes
 router.route("/logout").post(verifyToken, logoutUser);
 router.route("/refreshAccessToken").post(refreshAccessToken);
-
-//TODO: CHECK THESE ROUTES
-
-router.route("/updatePassword").post(verifyToken, updatePassword);
-router.route("/getCurrentUser").post(verifyToken, getCurrentUser);
-router.route("/updateAccountDetails").patch(verifyToken, updateAccountDetails);
+router.route("/updatePassword").patch(verifyToken, updatePassword);
+router.route("/getCurrentUser").get(verifyToken, getCurrentUser);
+router
+  .route("/updateAccountDetails")
+  .patch(upload.none(), verifyToken, updateAccountDetails);
 router
   .route("/updateUserAvatar")
-  .patch(verifyToken, upload.single("updateAvatar"), updateUserAvatar);
+  .patch(verifyToken, upload.single("avatar"), updateUserAvatar);
 router
   .route("/updateUserCoverImage")
-  .patch(verifyToken, upload.single("updateCoverImage"), updateUserCoverImage);
+  .patch(verifyToken, upload.single("coverImage"), updateUserCoverImage);
 router
   .route("/getUserChannelDetails/:userName")
   .get(verifyToken, getUserChannelDetails);
+
+  //TODO: Check this route
 router.route("/getUserWatchHistory").post(verifyToken, getUserWatchHistory);
 
 

@@ -32,12 +32,14 @@ router
     publishAVideo
   );
 
+  //TODO: Test the deleteVideo and UpdateVideo routes
+
 router
   .route("/:videoId")
   .get(getVideoById)
   .delete(deleteVideo)
-  .patch(upload.single(thumbnail), updateVideo);
+  .patch(upload.single("thumbnail"), updateVideo);
 
-router.route("/toogle/publish/:videoId").patch(togglePublishStatus);
+router.route("/toggle/publish/:videoId").patch(togglePublishStatus);
 
 export default router;
