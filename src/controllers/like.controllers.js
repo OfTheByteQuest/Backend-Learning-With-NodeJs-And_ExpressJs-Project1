@@ -20,17 +20,25 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   }
 
   const like = await Like.findOne({
-    likedBy: ownerId,
-    video: videoId,
+    $and: [
+      { likedBy: ownerId },
+      { video: videoId },
+      { comment: { $exists: false } },
+      { tweet: { $exists: false } },
+    ],
   });
 
+  // console.log(like);
+
+  var addedLike = undefined;
+  var updatedLike = undefined;
   if (!like) {
-    const addedLike = await Like.create({
+    addedLike = await Like.create({
       video: videoId,
       likedBy: ownerId,
     });
   } else {
-    const updatedLike = await Like.findOneAndDelete({
+    updatedLike = await Like.findOneAndDelete({
       $and: [{ comment: { $exists: false } }, { tweet: { $exists: false } }],
     });
   }
@@ -38,10 +46,13 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, tweet ? updatedLike : addedLike),
-      `Like has been toggeled from ${
-        tweet ? "liked to disliked" : "disliked to liked"
-      }`
+      new ApiResponse(
+        200,
+        like ? updatedLike : addedLike,
+        `Like has been toggeled from ${
+          like ? "liked to disliked" : "disliked to liked"
+        }`
+      )
     );
 });
 
@@ -65,14 +76,16 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
     comment: commentId,
   });
 
+  var addedLike = undefined;
+  var updatedLike = undefined;
   if (!like) {
-    const addedLike = await Like.create({
+    addedLike = await Like.create({
       comment: commentId,
       likedBy: ownerId,
       video: videoId,
     });
   } else {
-    const updatedLike = await Like.findOneAndDelete({
+    updatedLike = await Like.findOneAndDelete({
       likedBy: ownerId,
       comment: commentId,
     });
@@ -81,10 +94,13 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, like ? updatedLike : addedLike),
-      `Like has been toggeled from ${
-        like ? "liked to disliked" : "disliked to liked"
-      }`
+      new ApiResponse(
+        200,
+        like ? updatedLike : addedLike,
+        `Like has been toggeled from ${
+          like ? "liked to disliked" : "disliked to liked"
+        }`
+      )
     );
 });
 
@@ -108,14 +124,17 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
     tweet: tweetId,
   });
 
+  var addedLike = undefined;
+  var updatedLike = undefined;
+
   if (!like) {
-    const addedLike = await Like.create({
+    addedLike = await Like.create({
       tweet: tweetId,
       likedBy: ownerId,
       video: videoId,
     });
   } else {
-    const updatedLike = await Like.findOneAndDelete({
+    updatedLike = await Like.findOneAndDelete({
       likedBy: ownerId,
       tweet: tweetId,
     });
@@ -124,10 +143,13 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(200, like ? updatedLike : addedLike),
-      `Like has been toggeled from ${
-        like ? "liked to disliked" : "disliked to liked"
-      }`
+      new ApiResponse(
+        200,
+        like ? updatedLike : addedLike,
+        `Like has been toggeled from ${
+          like ? "liked to disliked" : "disliked to liked"
+        }`
+      )
     );
 });
 
@@ -143,11 +165,23 @@ const getLikedVideos = asyncHandler(async (req, res) => {
   const aggregationResponse = await Like.aggregate([
     {
       $match: {
-        $and: [
-          { comment: { $exists: false } },
-          { tweet: { $exists: false } },
-          { likedBy: new mongoose.Types.ObjectId(ownerId) },
-        ],
+        $expr: {
+          $and: [
+            {
+              $or: [
+                { $eq: [{ $type: "$comment" }, "missing"] },
+                { $eq: ["$comment", null] },
+              ],
+            },
+            {
+              $or: [
+                { $eq: [{ $type: "$tweet" }, "missing"] },
+                { $eq: ["$tweet", null] },
+              ],
+            },
+            { likedBy: new mongoose.Types.ObjectId(ownerId) },
+          ],
+        },
       },
     },
     {
@@ -183,11 +217,17 @@ const getLikedVideos = asyncHandler(async (req, res) => {
                   $match: {
                     $expr: {
                       $and: [
-                        { comment: { $exists: false } },
                         {
-                          tweet: {
-                            $exists: false,
-                          },
+                          $or: [
+                            { $eq: [{ $type: "$comment" }, "missing"] },
+                            { $eq: ["$comment", null] },
+                          ],
+                        },
+                        {
+                          $or: [
+                            { $eq: [{ $type: "$tweet" }, "missing"] },
+                            { $eq: ["$tweet", null] },
+                          ],
                         },
                       ],
                     },
@@ -207,6 +247,11 @@ const getLikedVideos = asyncHandler(async (req, res) => {
               owner: { $first: "$owner" },
             },
           },
+          {
+            $project: {
+              videoLikes: 0,
+            },
+          },
         ],
       },
     },
@@ -218,8 +263,8 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     },
   ]);
 
-  const videoArray = aggregationResponse[0].map((document) => {
-    document = document.likedVideo;
+  const videoArray = aggregationResponse.map((document) => {
+    return document["likedVideo"];
   });
 
   return res
@@ -227,8 +272,8 @@ const getLikedVideos = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        aggregationResponse[0].length === 0 ? {} : videoArray,
-        aggregationResponse[0].length === 0
+        aggregationResponse.length === 0 ? {} : videoArray,
+        aggregationResponse.length === 0
           ? `OwnerId: ${ownerId} has no liked videos`
           : `Videos liked by ownerId: ${ownerId} have been fetched successfully`
       )

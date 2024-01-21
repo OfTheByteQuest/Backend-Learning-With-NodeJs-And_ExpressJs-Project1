@@ -130,7 +130,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        aggregateResponse[0],
+        aggregateResponse,
         `Playlist with the id ${playlistId} has been found successfully`
       )
     );

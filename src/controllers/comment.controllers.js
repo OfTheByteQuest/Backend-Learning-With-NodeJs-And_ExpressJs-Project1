@@ -1,31 +1,31 @@
-import mongoose from "mongoose";
+import mongoose, { isValidObjectId } from "mongoose";
 import { Comment } from "../models/comment.model.js";
 import { User } from "../models/user.model.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
 
 const getVideoComments = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   const { page = 1, limit = 10 } = req.query;
 
-  if (!videoId) {
+  if (!(videoId && isValidObjectId(videoId))) {
     throw new ApiError(
-      404,
-      "fieldsEmptyError: videoId is missing, it has not been provided"
+      "videoIdNotPresent: Comment Id has not been provided as params in the getVideoComments controller"
     );
   }
-
-  const options = {
-    page,
-    limit,
-  };
 
   if (!(page && limit)) {
     throw new ApiError(
       404,
-      "fieldsEmptyError:  is missing, it has not been provided"
+      "fieldsEmptyError: Page or/and limit is missing, it has not been provided"
     );
   }
+
+  const options = {
+    page: Number(page),
+    limit: Number(limit),
+  };
 
   const aggregateComments = await Comment.aggregate([
     {
@@ -35,17 +35,17 @@ const getVideoComments = asyncHandler(async (req, res) => {
     },
     {
       $lookup: {
-        $from: "videos",
-        $localField: "video",
-        $foreignField: "_id",
+        from: "videos",
+        localField: "video",
+        foreignField: "_id",
         as: "video",
       },
     },
     {
       $lookup: {
-        $from: "users",
-        $localField: "owner",
-        $foreignField: "_id",
+        from: "users",
+        localField: "owner",
+        foreignField: "_id",
         as: "owner",
       },
     },
@@ -86,21 +86,32 @@ const getVideoComments = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        comments[0],
+        comments,
         `Comments have been fetched successfully for page ${page} with limit ${limit}`
       )
     );
 });
 
 const addComments = asyncHandler(async (req, res) => {
-  const videoId = req.params;
-  const { content, ownerId } = req.body;
+  const { videoId } = req.params;
+  const ownerId = req?.user?._id;
+  const { content } = req.body;
 
-  if (
-    [content, videoId, ownerId].some((field) => {
-      field?.trim() === "";
-    })
-  ) {
+  if (!(videoId && isValidObjectId(videoId))) {
+    throw new ApiError(
+      404,
+      "InvalidVideoId: The provided id is not a valid ObjectId: Error at addComments controller"
+    );
+  }
+
+  if (!(ownerId && isValidObjectId(ownerId))) {
+    throw new ApiError(
+      404,
+      "InvalidVideoIs: The provided id is not a valid ObjectId: Error at addComments controller"
+    );
+  }
+
+  if (!(content && content.trim() !== "")) {
     throw new ApiError(
       400,
       "fieldsEmptyError: All the fields are required in the form"
@@ -109,7 +120,7 @@ const addComments = asyncHandler(async (req, res) => {
 
   //check whether the comment is already in the database
 
-  const addedComment = await User.create({
+  const addedComment = await Comment.create({
     content,
     video: videoId,
     owner: ownerId,
@@ -123,20 +134,25 @@ const addComments = asyncHandler(async (req, res) => {
 });
 
 const updateComment = asyncHandler(async (req, res) => {
-  const commentId = req.params;
-  const { content, ownerId } = req.body;
+  const { commentId } = req.params;
+  const ownerId = req?.user?._id;
+  const { content } = req.body;
 
-  if (!commentId) {
+  if (!(commentId && isValidObjectId(commentId))) {
     throw new ApiError(
       "commentIdNotPresent: Comment Id has not been provided as params in the udateComment controller"
+    );
+  }
+
+  if (!(ownerId && isValidObjectId(ownerId))) {
+    throw new ApiError(
+      "ownerIdNotPresent: Owner Id has not been provided as params in the udateComment controller"
     );
   }
 
   const updatedCommentOutcome = await Comment.updateOne(
     { _id: commentId, owner: ownerId },
     { $set: { content: content } }
-  ).then((outcomeObject) =>
-    console.log("Outcome Object of the update comment command: ", outcomeObject)
   );
 
   return res
@@ -151,25 +167,33 @@ const updateComment = asyncHandler(async (req, res) => {
 });
 
 const deleteComment = asyncHandler(async (req, res) => {
-  const commentId = req.params;
+  const { commentId } = req.params;
+  const ownerId = req?.user?._id;
 
-  if (!commentId) {
+  if (!(commentId && isValidObjectId(commentId))) {
     throw new ApiError(
       "commentIdNotPresent: Comment Id has not been provided as params in the deleteComment controller"
     );
   }
 
-  const deletedComment = await Comment.findByIdAndDelete(commentId).then(() =>
-    console.log("Comment has been deleted successfully: ", deleteComment)
-  );
+  if (!(ownerId && isValidObjectId(ownerId))) {
+    throw new ApiError(
+      "commentIdNotPresent: Owner Id has not been provided as params in the udateComment controller"
+    );
+  }
+
+  await Comment.deleteOne({
+    _id: commentId,
+    owner: ownerId,
+  });
 
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        deletedComment._id,
-        `Comment with the id ${deleteComment._id} has been deleted successfully`
+        commentId,
+        `Comment with the id ${commentId} has been deleted successfully`
       )
     );
 });

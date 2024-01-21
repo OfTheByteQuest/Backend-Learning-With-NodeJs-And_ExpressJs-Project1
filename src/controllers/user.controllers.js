@@ -616,11 +616,7 @@ const getUserChannelDetails = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiResponse(
-        200,
-        channel[0],
-        "User Channel has been fethced succesfully"
-      )
+      new ApiResponse(200, channel, "User Channel has been fethced succesfully")
     );
 });
 
@@ -647,7 +643,6 @@ const getUserWatchHistory = asyncHandler(async (req, res) => {
         foreignField: "_id",
         as: "watchHistory",
         pipeline: [
-          //TODO: HERE CHECK HOW DOES THE SUB-AGGREGATION HANDLES AN ARRAY OF OBJECTS WHICH WATCH-HISTORY IS
           {
             $lookup: {
               from: "users",

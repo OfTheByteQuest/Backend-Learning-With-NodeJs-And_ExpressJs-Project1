@@ -34,7 +34,9 @@ const createTweet = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(200, addedTweet, "Tweet has been added successfully");
+    .json(
+      new ApiResponse(200, addedTweet, "Tweet has been added successfully")
+    );
 });
 
 const getUserTweets = asyncHandler(async (req, res) => {
@@ -62,7 +64,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
         pipeline: [
           {
             $project: {
-              username: 1,
+              userName: 1,
               "avatar.url": 1,
             },
           },
@@ -89,9 +91,6 @@ const getUserTweets = asyncHandler(async (req, res) => {
         likesCount: {
           $size: "$likeDetails",
         },
-        ownerDetails: {
-          $first: "$ownerDetails",
-        },
       },
     },
     {
@@ -109,7 +108,7 @@ const getUserTweets = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        userTweets[0].length === 0 ? {} : userTweets[0],
+        userTweets[0].length === 0 ? {} : userTweets,
         userTweets[0].length === 0
           ? `OwnerId: ${ownerId} has no tweets`
           : `Tweets by ownerId: ${ownerId} have been fetched successfully`
@@ -144,7 +143,7 @@ const updateTweet = asyncHandler(async (req, res) => {
     );
   }
 
-  const updatedTweet = await findOneAndUpdate(
+  const updatedTweet = await Tweet.findOneAndUpdate(
     { _id: tweetId, owner: ownerId },
     {
       $set: {
@@ -189,7 +188,7 @@ const deleteTweet = asyncHandler(async (req, res) => {
     );
   }
 
-  const deletedTweet = await findOneAndDelete({ _id: tweetId, owner: ownerId });
+  const deletedTweet = await Tweet.deleteOne({ _id: tweetId, owner: ownerId });
 
   if (!deletedTweet) {
     throw new ApiError(

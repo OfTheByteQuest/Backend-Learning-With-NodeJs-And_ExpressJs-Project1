@@ -204,7 +204,7 @@ const getVideoById = asyncHandler(async (req, res) => {
 
   // console.log("VideoId:", videoId);
 
-  if (!isValidObjectId(videoId)) {
+  if (!(videoId && isValidObjectId(videoId))) {
     throw new ApiError(
       404,
       "InvalidVideoIs: The provided id is not a valid ObjectId: Error at getVideoById controller"

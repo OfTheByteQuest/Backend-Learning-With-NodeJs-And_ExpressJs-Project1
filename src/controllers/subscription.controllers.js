@@ -3,7 +3,7 @@ import { User } from "../models/user.model.js";
 import { Subscription } from "../models/subscription.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { asyncHandler } from "../utils/asyncHandler.js";
+import asyncHandler from "../utils/asyncHandler.js";
 
 const toggleSubscription = asyncHandler(async (req, res) => {
   const { channelId } = req.params;
@@ -21,7 +21,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
     );
   }
 
-  const subscriptionDocuments = await find({
+  const subscriptionDocuments = await Subscription.find({
     channel: channelId,
     subscriber: subscriberId,
   }).exec();
@@ -55,6 +55,8 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
   const { channelId } = req.params;
 
+  console.log(channelId);
+
   if (!(channelId && isValidObjectId(channelId))) {
     throw new ApiError(
       `InvalidObjecId: ${channelId} is not a valid ownerId: Error at getUserChannelSubscribers controller`
@@ -70,7 +72,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     {
       $lookup: {
         from: "users",
-        localField: "subscribers",
+        localField: "subscriber",
         foreignField: "_id",
         as: "subscriber",
         pipeline: [
@@ -86,15 +88,13 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     },
     {
       $project: {
-        subscriber: { $first: "$subscriber" },
+        subscriber: 1,
         _id: 1,
       },
     },
   ]);
 
-  const subscribersArray = subscribers.map(
-    (document) => (document = document.subscriber)
-  );
+  const subscribersArray = subscribers.map((document) => document.subscriber);
 
   if (subscribersArray.length === 0) {
     return res
@@ -105,10 +105,12 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiError(
+      new ApiResponse(
         200,
         subscribersArray,
-        `Channel with id: ${channelId} has ${subscribersArray.length} subscribers`
+        `Channel with id: ${channelId} has ${
+          subscribersArray.length
+        } subscriber${subscribersArray.length > 1 ? "s." : "."}`
       )
     );
 });
@@ -169,7 +171,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
   ]);
 
   const subscribedChannelsArray = aggregationResponse.map(
-    (document) => (document = document.subscribedChannel)
+    (document) => document.subscribedChannel
   );
 
   if (subscribedChannelsArray.length === 0) {
@@ -181,9 +183,9 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(
-      new ApiError(
+      new ApiResponse(
         200,
-        subscribersArray,
+        subscribedChannelsArray,
         `User with id: ${subscriberId} has subscried to ${subscribedChannelsArray.length} channels`
       )
     );

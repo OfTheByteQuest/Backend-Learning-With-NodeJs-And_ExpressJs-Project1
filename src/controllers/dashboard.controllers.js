@@ -11,12 +11,13 @@ const getChannelStats = asyncHandler(async (req, res) => {
   //Step 4: Get total subscribers from the subscribtion collection where the channelId matches
   //Step 5: Get view from the users collection where watchHistory field matches the total videos field in the aggregation pipeline
 
-  const { channelId } = req?.user?._id;
+  const channelId = req?.user?._id;
+  console.log(channelId);
 
   if (!(channelId && isValidObjectId(channelId))) {
     throw new ApiError(
       400,
-      "InvalidObjectId: Proivede videoId is either emapty or not a valid objectId: Error at deleteVideo controller"
+      "InvalidObjectId: Proivede channelId is either emapty or not a valid objectId: Error at getChannelStats controller"
     );
   }
 
@@ -43,11 +44,20 @@ const getChannelStats = asyncHandler(async (req, res) => {
                   $match: {
                     $expr: {
                       $and: [
-                        { comment: { $exists: false } },
                         {
-                          tweet: {
-                            $exists: false,
-                          },
+                          $or: [
+                            { $eq: [{ $type: "$comment" }, "missing"] },
+                            { $eq: ["$comment", null] },
+                          ],
+                        },
+                        {
+                          $or: [
+                            { $eq: [{ $type: "$tweet" }, "missing"] },
+                            { $eq: ["$tweet", null] },
+                          ],
+                        },
+                        {
+                          $eq: ["$video", "$$videoId"],
                         },
                       ],
                     },
@@ -64,7 +74,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
           {
             $lookup: {
               from: "users",
-              localFields: "_id",
+              localField: "_id",
               foreignField: "watchHistory",
               as: "viewsOfVideo",
             },
@@ -75,6 +85,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
               likeCount: {
                 $size: "$likesOfVideo",
               },
+              viewsOfVideo: 1,
             },
           },
         ],
@@ -87,25 +98,25 @@ const getChannelStats = asyncHandler(async (req, res) => {
         foreignField: "channel",
         as: "subscribers",
       },
-    },
+    }, //till here
     {
-      $addFields: {
+      $project: {
         userName: 1,
         createdAt: 1,
         updatedAt: 1,
-        videosCount: { $size: "$totalVideos" },
         subscribersCount: { $size: "$subscribers" },
+        videosCount: { $size: "$totalVideos" },
         likesCount: {
           $reduce: {
             input: "$totalVideos",
-            intialValue: 0,
+            initialValue: 0,
             in: { $add: ["$$value", "$$this.likeCount"] },
           },
         },
         viewsCount: {
           $reduce: {
-            input: "totalVideos",
-            intialValue: 0,
+            input: "$totalVideos",
+            initialValue: 0,
             in: { $add: ["$$value", { $size: "$$this.viewsOfVideo" }] },
           },
         },
@@ -132,12 +143,12 @@ const getChannelStats = asyncHandler(async (req, res) => {
 });
 
 const getChannelVideos = asyncHandler(async (req, res) => {
-  const { channelId } = req?.user?._id;
+  const channelId = req?.user?._id;
 
   if (!(channelId && isValidObjectId(channelId))) {
     throw new ApiError(
       400,
-      "InvalidObjectId: Proivede videoId is either emapty or not a valid objectId: Error at deleteVideo controller"
+      "InvalidObjectId: Proivede channelId is either emapty or not a valid objectId: Error at getChannelStats controller"
     );
   }
 
@@ -153,6 +164,18 @@ const getChannelVideos = asyncHandler(async (req, res) => {
         localField: "_id",
         foreignField: "owner",
         as: "totalVideos",
+        pipeline: [
+          {
+            $project: {
+              owner: 0,
+              duration: 0,
+              views: 0,
+              __v: 0,
+              createdAt: 0,
+              updatedAt: 0,
+            },
+          },
+        ],
       },
     },
     {
@@ -168,7 +191,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(
         200,
-        aggregationResult[0],
+        aggregationResult,
         `Videos for channelId: ${channelId} has been fetched successfully.`
       )
     );
