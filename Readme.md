@@ -41,6 +41,6 @@ ALog with the use of ***MognoDB Atlas*** for storing information and indexing, f
 The repository also contains some additional files such as **erros.txt** and **Project sequential setup** files to store some extra information about the project.
 
 - [errors.txt](./errors.txt):- contains some basic text messages which are frequently used in the project though, they are mandatorly utlized.
-- [Project sequential setup](./Project%20sequential%20setup.excalidraw):- is an exacalidraw filw that represents the itnital project setup of a ususal backend project. Although it is not complete it might be in the future.
+- [Project sequential setup](./Project%20sequential%20setup.excalidraw):- is an exacalidraw file that represents the itnital project setup of a ususal backend project. Although it is not complete it might be in the future.
 - [About event loop, Promises, fetch and setTimeouts](./About%20event%20loop,%20Promises,%20fetch%20and%20setTimeouts.excalidraw):- have information about the asynchronous nature of the `Javascript` language and how it handles browers **Api(s)**
 and promises. This file is the result of my habit of deeping my information stack while being confused. It certainly is a help for those who would truly like to deepen their understanding about the topics mentioned in the name of the file. Feel free to use as it contains examples and results.
